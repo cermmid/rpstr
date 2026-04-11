@@ -1,0 +1,336 @@
+/* ── Reset & Base ─────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+
+body {
+  background: #111;
+  color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Settings View ─────────────────────────────── */
+.settings-view {
+  padding: 28px 18px calc(env(safe-area-inset-bottom) + 40px);
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-align: center;
+  color: #40d080;
+  padding: 8px 0 16px;
+}
+
+/* ── Section ─────────────────────────────── */
+.settings-section {
+  background: #1c1c1c;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+/* ── NumControl ─────────────────────────────── */
+.num-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: none;
+  background: #2a2a2a;
+  color: #f0f0f0;
+  font-size: 24px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  touch-action: none;
+  transition: background 0.1s, opacity 0.1s;
+  line-height: 1;
+}
+
+.step-btn:active {
+  background: #383838;
+}
+
+.step-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.num-value {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+
+/* ── Alert Controls ─────────────────────────────── */
+.alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+
+.alert-label {
+  font-size: 15px;
+  color: #ddd;
+}
+
+.alert-select {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  border-radius: 10px;
+  color: #f0f0f0;
+  font-size: 14px;
+  padding: 7px 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  min-width: 108px;
+  text-align: center;
+}
+
+.alert-sub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0;
+  margin-top: -2px;
+}
+
+.alert-sub .num-control {
+  flex: 1;
+}
+
+.alert-sub.right {
+  justify-content: flex-end;
+}
+
+/* ── Toggle ─────────────────────────────── */
+.toggle {
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.22s;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.toggle.on  { background: #40d080; }
+.toggle.off { background: #3a3a3a; }
+
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.toggle.on  .toggle-thumb { left: 26px; }
+.toggle.off .toggle-thumb { left: 4px; }
+
+/* ── Start Button ─────────────────────────────── */
+.start-btn {
+  width: 100%;
+  height: 62px;
+  border-radius: 16px;
+  border: none;
+  background: #40d080;
+  color: #0a0a0a;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.start-btn:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+/* ── Timer View ─────────────────────────────── */
+.timer-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top) + 16px) 24px
+           calc(env(safe-area-inset-bottom) + 40px);
+  gap: 20px;
+}
+
+/* ── Timer Top Bar ─────────────────────────────── */
+.timer-topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stop-btn {
+  background: #1c1c1c;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 9px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stop-btn:active { background: #2a2a2a; }
+
+.paused-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #f0c040;
+  background: rgba(240,192,64,0.12);
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
+/* ── Progress Ring ─────────────────────────────── */
+.ring-wrapper {
+  position: relative;
+  width: min(300px, 88vw);
+  height: min(300px, 88vw);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ring-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.phase-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  transition: color 0.4s ease;
+}
+
+.round-counter {
+  font-size: 14px;
+  color: #666;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.time-display {
+  font-size: clamp(52px, 16vw, 72px);
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.done-subtext {
+  font-size: 13px;
+  color: #777;
+  text-align: center;
+  padding: 0 20px;
+  margin-top: 4px;
+}
+
+/* ── Timer Controls ─────────────────────────────── */
+.timer-controls {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  gap: 12px;
+}
+
+.ctrl-btn {
+  flex: 1;
+  height: 58px;
+  border-radius: 16px;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.ctrl-btn:active {
+  opacity: 0.82;
+  transform: scale(0.97);
+}
+
+.ctrl-primary {
+  background: #40d080;
+  color: #0a0a0a;
+}
+
+.ctrl-secondary {
+  background: #2a2a2a;
+  color: #f0f0f0;
+}
