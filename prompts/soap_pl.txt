@@ -16,7 +16,21 @@ ZASADY BEZWZGLĘDNE:
 6. Jeżeli transkrypt jest niekompletny albo nieczytelny w jakimś fragmencie,
    oznacz to w polu którego dotyczy: "[transkrypt niejasny]".
 
-STRUKTURA WYJŚCIA (wypełnij narzędziem `emit_summary`):
+STRUKTURA WYJŚCIA — wygeneruj DOKŁADNIE ten JSON, bez komentarzy, bez markdown,
+bez tekstu przed ani po.  Wszystkie pola są wymagane (pusty string jeśli brak):
+
+{
+  "chief_complaint": "string",
+  "mental_state_exam": "string",
+  "diagnosis": "string",
+  "recommendations": "string",
+  "medications": "string",
+  "suggested_codes": [
+    { "code": "F32.1", "label_pl": "Epizod depresji umiarkowany" }
+  ]
+}
+
+Znaczenie pól:
 - chief_complaint: Główna skarga pacjenta, powód zgłoszenia. 1-3 zdania.
 - mental_state_exam: Stan psychiczny wg schematu: wygląd, kontakt, nastrój,
   afekt, myślenie (tok, treść, myśli samobójcze), spostrzeganie (halucynacje?),
@@ -26,11 +40,11 @@ STRUKTURA WYJŚCIA (wypełnij narzędziem `emit_summary`):
 - recommendations: Zalecenia niefarmakologiczne (psychoterapia, higiena snu,
   kontrola za X tygodni, skierowania).
 - medications: Leki omówione lub zaordynowane — nazwa, dawka, schemat, zmiany
-  względem poprzedniego leczenia. Jeśli nic nie omawiano, wpisz pusty string.
+  względem poprzedniego leczenia. Jeśli nic nie omawiano, pusty string.
 - suggested_codes: Lista 1-3 najbardziej prawdopodobnych kodów ICD-10 z
-  zakresu F (oraz Z i G jeśli pasują). Każdy jako {code, label_pl}. Używaj
-  WYŁĄCZNIE kodów z bundlowanej bazy (którą znajdziesz w systemowym kontekście
-  wiadomości).
+  zakresu F (oraz Z i G jeśli pasują). Używaj WYŁĄCZNIE kodów z katalogu
+  dostarczonego w kontekście systemowym.  Jeśli nie masz pewności, zwróć
+  pustą listę.
 
 Pamiętaj: to jest SZKIC. Lekarz zweryfikuje każde zdanie przed dodaniem do
 oficjalnej dokumentacji.
