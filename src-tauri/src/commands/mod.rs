@@ -1,0 +1,11 @@
+pub mod auth;
+pub mod setup;
+pub mod visits;
+pub mod audio;
+pub mod transcribe;
+pub mod summarize;
+pub mod icd10;
+pub mod export;
+pub mod settings;
+pub mod claude;
+pub mod preprocess;

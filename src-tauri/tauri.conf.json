@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "rpstr",
+  "version": "0.1.0",
+  "identifier": "pl.cermmid.rpstr",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "rpstr",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.anthropic.com http://localhost:11434; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis", "deb", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Medical",
+    "shortDescription": "Asystent psychiatry — lokalne podsumowania wizyt",
+    "longDescription": "Narzędzie dla lekarzy psychiatrów: nagrywa rozmowę, lokalnie transkrybuje i generuje szkic dokumentacji (SOAP + sugerowane kody ICD-10). Dane pacjentów nie opuszczają laptopa (chyba że lekarz świadomie włączy tryb BYOK Claude)."
+  },
+  "plugins": {
+    "updater": {
+      "active": false
+    }
+  }
+}

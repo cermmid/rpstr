@@ -1,2 +1,24 @@
 node_modules/
 dist/
+dist-node/
+*.tsbuildinfo
+.DS_Store
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock
+
+# Modele pobierane po instalacji — nie commitujemy
+models/
+*.bin
+*.gguf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local
