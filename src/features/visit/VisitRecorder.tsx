@@ -194,6 +194,7 @@ export function VisitRecorder() {
         <ReviewPanel
           summary={summary}
           acceptedCodes={acceptedCodes}
+          visitId={visitId}
           onSummaryChange={setSummary}
           onCodesChange={setAcceptedCodes}
           onSave={save}
@@ -206,11 +207,13 @@ export function VisitRecorder() {
 function ReviewPanel(props: {
   summary: VisitSummary;
   acceptedCodes: Icd10Code[];
+  visitId: string | null;
   onSummaryChange: (s: VisitSummary) => void;
   onCodesChange: (c: Icd10Code[]) => void;
   onSave: () => void;
 }) {
   const { summary, acceptedCodes, onSummaryChange, onCodesChange, onSave } = props;
+  const navigate = useNavigate();
   const set = (key: keyof VisitSummary, value: string) =>
     onSummaryChange({ ...summary, [key]: value });
 
@@ -232,13 +235,21 @@ function ReviewPanel(props: {
         <Icd10Picker selected={acceptedCodes} onChange={onCodesChange} />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button className="btn-primary" onClick={onSave}>
           Zapisz do dokumentacji
         </button>
         <button className="btn-secondary" onClick={() => navigator.clipboard?.writeText(renderText(summary, acceptedCodes))}>
           Kopiuj do schowka
         </button>
+        {props.visitId && (
+          <button
+            className="btn-secondary"
+            onClick={() => navigate(`/app/visits/${props.visitId}/print`)}
+          >
+            Eksport PDF
+          </button>
+        )}
       </div>
     </div>
   );

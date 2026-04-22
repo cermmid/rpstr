@@ -44,3 +44,116 @@ body {
     @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:bg-slate-900 dark:border-slate-800;
   }
 }
+
+/* ───────────────────────── Widok drukowania / PDF ───────────────────────── */
+
+.print-page {
+  background: white;
+  color: black;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  position: relative;
+}
+
+.print-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.print-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.print-header .meta {
+  font-size: 13px;
+  color: #475569;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.print-section {
+  margin-bottom: 18px;
+  page-break-inside: avoid;
+}
+
+.print-section h2 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #334155;
+  margin-top: 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2px;
+}
+
+.print-section p {
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.print-section ul {
+  list-style: disc;
+  margin-left: 20px;
+  font-size: 14px;
+}
+
+.print-footer {
+  margin-top: 28px;
+  padding-top: 12px;
+  border-top: 1px solid #cbd5e1;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.watermark {
+  position: fixed;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-28deg);
+  font-size: 96px;
+  font-weight: 800;
+  color: rgba(239, 68, 68, 0.12);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+  letter-spacing: 0.08em;
+}
+
+/* W druku ukrywamy toolbar i boczną nawigację aplikacji. */
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+  body {
+    background: white !important;
+  }
+  .no-print,
+  aside {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .print-page {
+    max-width: none;
+    padding: 0;
+  }
+  .watermark {
+    color: rgba(239, 68, 68, 0.18);
+    position: fixed;
+  }
+}

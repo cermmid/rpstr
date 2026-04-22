@@ -19,6 +19,7 @@ pub fn run() {
             commands::setup::probe_system,
             commands::setup::download_profile,
             commands::visits::list_visits,
+            commands::visits::get_visit,
             commands::visits::create_visit,
             commands::visits::log_consent,
             commands::visits::save_visit,

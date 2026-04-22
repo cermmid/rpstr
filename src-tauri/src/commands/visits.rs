@@ -124,6 +124,61 @@ pub async fn create_visit(
 }
 
 #[tauri::command]
+pub async fn get_visit(visit_id: String, state: State<'_, AppState>) -> Result<Visit> {
+    let db = db::db(&state)?;
+    db.with_conn(|c| {
+        let mut stmt = c.prepare(
+            "SELECT v.id, p.pseudonym, v.started_at, v.status, v.consent_logged, \
+                    v.transcript, v.model_used, v.tokens_input, v.tokens_output, v.cost_pln, \
+                    s.chief_complaint, s.mental_state_exam, s.diagnosis, s.recommendations, \
+                    s.medications, s.accepted_codes \
+             FROM visits v \
+             JOIN patients p ON p.id = v.patient_id \
+             LEFT JOIN summaries s ON s.visit_id = v.id \
+             WHERE v.id = ?",
+        )?;
+        let row = stmt.query_row(params![visit_id], |row| {
+            let accepted_codes_json: Option<String> = row.get(15)?;
+            let accepted_codes = accepted_codes_json
+                .as_deref()
+                .and_then(|s| serde_json::from_str::<Vec<String>>(s).ok());
+            let chief: Option<String> = row.get(10)?;
+            let mse: Option<String> = row.get(11)?;
+            let diag: Option<String> = row.get(12)?;
+            let rec: Option<String> = row.get(13)?;
+            let meds: Option<String> = row.get(14)?;
+            let summary = if chief.is_some() || mse.is_some() || diag.is_some() {
+                Some(serde_json::json!({
+                    "chiefComplaint": chief.unwrap_or_default(),
+                    "mentalStateExam": mse.unwrap_or_default(),
+                    "diagnosis": diag.unwrap_or_default(),
+                    "recommendations": rec.unwrap_or_default(),
+                    "medications": meds.unwrap_or_default(),
+                    "suggestedCodes": [],
+                }))
+            } else {
+                None
+            };
+            Ok(Visit {
+                id: row.get(0)?,
+                patient_id: row.get(1)?,
+                started_at: row.get(2)?,
+                status: row.get(3)?,
+                consent_logged: row.get::<_, i64>(4)? != 0,
+                transcript: row.get(5)?,
+                summary,
+                accepted_codes,
+                model_used: row.get(6)?,
+                tokens_input: row.get::<_, Option<i64>>(7)?.map(|v| v as u32),
+                tokens_output: row.get::<_, Option<i64>>(8)?.map(|v| v as u32),
+                cost_pln: row.get(9)?,
+            })
+        })?;
+        Ok(row)
+    })
+}
+
+#[tauri::command]
 pub async fn log_consent(visit_id: String, state: State<'_, AppState>) -> Result<()> {
     let db = db::db(&state)?;
     let now = Utc::now().to_rfc3339();

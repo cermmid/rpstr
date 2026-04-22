@@ -15,6 +15,7 @@ export const api = {
     invoke<void>("download_profile", { profile, modelsDir }),
 
   listVisits: () => invoke<Visit[]>("list_visits"),
+  getVisit: (visitId: string) => invoke<Visit>("get_visit", { visitId }),
   createVisit: (patientPseudonym: string) =>
     invoke<Visit>("create_visit", { patientPseudonym }),
   logConsent: (visitId: string) => invoke<void>("log_consent", { visitId }),
