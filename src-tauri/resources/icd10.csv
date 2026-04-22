@@ -1,0 +1,148 @@
+code,label_pl
+F00.0,Otępienie w chorobie Alzheimera o wczesnym początku
+F00.1,Otępienie w chorobie Alzheimera o późnym początku
+F00.2,Otępienie w chorobie Alzheimera atypowe lub mieszane
+F01.0,Otępienie naczyniowe o ostrym początku
+F01.1,Wielozawałowe otępienie naczyniowe
+F01.2,Otępienie naczyniowe podkorowe
+F02.0,Otępienie w chorobie Picka
+F02.3,Otępienie w chorobie Parkinsona
+F02.4,Otępienie w chorobie spowodowanej HIV
+F03,Otępienie bliżej nieokreślone
+F04,Organiczny zespół amnestyczny niespowodowany alkoholem
+F05.0,Majaczenie bez otępienia
+F05.1,Majaczenie nakładające się na otępienie
+F06.0,Halucynoza organiczna
+F06.2,Organiczne zaburzenia urojeniowe
+F06.3,Organiczne zaburzenia nastroju
+F06.4,Organiczne zaburzenia lękowe
+F06.6,Organiczne zaburzenie osobowości z chwiejnością emocjonalną
+F07.0,Zaburzenia osobowości spowodowane chorobą mózgu
+F07.1,Zespół po zapaleniu mózgu
+F07.2,Zespół po wstrząśnieniu mózgu
+F10.1,Szkodliwe używanie alkoholu
+F10.2,Zespół uzależnienia od alkoholu
+F10.3,Zespół abstynencyjny po alkoholu
+F10.4,Alkoholowy zespół abstynencyjny z majaczeniem
+F10.6,Zespół amnestyczny spowodowany alkoholem
+F11.2,Zespół uzależnienia od opiatów
+F12.2,Zespół uzależnienia od konopi
+F13.2,Zespół uzależnienia od leków uspokajających lub nasennych
+F14.2,Zespół uzależnienia od kokainy
+F15.2,Zespół uzależnienia od innych substancji stymulujących
+F17.2,Zespół uzależnienia od tytoniu
+F19.2,Zespół uzależnienia od wielu substancji
+F20.0,Schizofrenia paranoidalna
+F20.1,Schizofrenia hebefreniczna
+F20.2,Schizofrenia katatoniczna
+F20.3,Schizofrenia niezróżnicowana
+F20.5,Schizofrenia rezydualna
+F20.6,Schizofrenia prosta
+F21,Zaburzenie schizotypowe
+F22.0,Zaburzenia urojeniowe
+F22.8,Inne uporczywe zaburzenia urojeniowe
+F23.0,Ostre wielopostaciowe zaburzenia psychotyczne bez objawów schizofrenii
+F23.1,Ostre wielopostaciowe zaburzenia psychotyczne z objawami schizofrenii
+F23.2,Ostre zaburzenie psychotyczne podobne do schizofrenii
+F25.0,Zaburzenie schizoafektywne typu maniakalnego
+F25.1,Zaburzenie schizoafektywne typu depresyjnego
+F25.2,Zaburzenie schizoafektywne typu mieszanego
+F29,Nieokreślone psychozy nieorganiczne
+F30.0,Hipomania
+F30.1,Mania bez objawów psychotycznych
+F30.2,Mania z objawami psychotycznymi
+F31.0,Zaburzenie afektywne dwubiegunowe w hipomanii
+F31.1,Zaburzenie afektywne dwubiegunowe w manii bez objawów psychotycznych
+F31.2,Zaburzenie afektywne dwubiegunowe w manii z objawami psychotycznymi
+F31.3,Zaburzenie afektywne dwubiegunowe w epizodzie depresyjnym łagodnym lub umiarkowanym
+F31.4,Zaburzenie afektywne dwubiegunowe w epizodzie depresyjnym ciężkim bez objawów psychotycznych
+F31.5,Zaburzenie afektywne dwubiegunowe w epizodzie depresyjnym ciężkim z objawami psychotycznymi
+F31.6,Zaburzenie afektywne dwubiegunowe w epizodzie mieszanym
+F31.7,Zaburzenie afektywne dwubiegunowe obecnie w remisji
+F32.0,Epizod depresji łagodny
+F32.1,Epizod depresji umiarkowany
+F32.2,Epizod depresji ciężki bez objawów psychotycznych
+F32.3,Epizod depresji ciężki z objawami psychotycznymi
+F32.9,Epizod depresyjny bliżej nieokreślony
+F33.0,Zaburzenia depresyjne nawracające epizod łagodny
+F33.1,Zaburzenia depresyjne nawracające epizod umiarkowany
+F33.2,Zaburzenia depresyjne nawracające epizod ciężki bez objawów psychotycznych
+F33.3,Zaburzenia depresyjne nawracające epizod ciężki z objawami psychotycznymi
+F33.4,Zaburzenia depresyjne nawracające obecnie w remisji
+F34.0,Cyklotymia
+F34.1,Dystymia
+F38,Inne zaburzenia nastroju
+F39,Zaburzenia nastroju bliżej nieokreślone
+F40.0,Agorafobia
+F40.1,Fobie społeczne
+F40.2,Specyficzne postaci fobii
+F41.0,Zaburzenie lękowe z napadami paniki
+F41.1,Zaburzenie lękowe uogólnione
+F41.2,Zaburzenie depresyjne i lękowe mieszane
+F42.0,Z przewagą natrętnych myśli lub ruminacji
+F42.1,Z przewagą czynności natrętnych (rytuały)
+F42.2,Myśli i czynności natrętne mieszane
+F43.0,Ostra reakcja na stres
+F43.1,Zespół stresu pourazowego (PTSD)
+F43.2,Zaburzenia adaptacyjne
+F44.0,Amnezja dysocjacyjna
+F44.4,Dysocjacyjne zaburzenia ruchu
+F44.5,Drgawki dysocjacyjne
+F45.0,Zaburzenia somatyzacyjne
+F45.1,Nieróżnicowane zaburzenie somatoformiczne
+F45.2,Zaburzenia hipochondryczne
+F45.4,Uporczywe zaburzenia bólowe postaci somatoformicznej
+F48.0,Neurastenia
+F50.0,Jadłowstręt psychiczny (anorexia nervosa)
+F50.2,Bulimia psychiczna (bulimia nervosa)
+F50.8,Inne zaburzenia odżywiania
+F51.0,Bezsenność nieorganiczna
+F51.2,Nieorganiczne zaburzenia rytmu snu i czuwania
+F51.4,Lęki nocne
+F51.5,Koszmary senne
+F52.0,Brak lub utrata potrzeb seksualnych
+F52.2,Zaburzenia wzwodu u mężczyzn
+F53.0,Łagodne zaburzenia psychiczne i zachowania związane z połogiem
+F60.0,Osobowość paranoiczna
+F60.1,Osobowość schizoidalna
+F60.2,Osobowość dyssocjalna
+F60.3,Osobowość chwiejna emocjonalnie (borderline)
+F60.4,Osobowość histrioniczna
+F60.5,Osobowość anankastyczna
+F60.6,Osobowość lękliwa (unikająca)
+F60.7,Osobowość zależna
+F63.0,Patologiczny hazard
+F63.1,Piromania
+F63.2,Kleptomania
+F64.0,Transseksualizm
+F70,Upośledzenie umysłowe lekkie
+F71,Upośledzenie umysłowe umiarkowane
+F72,Upośledzenie umysłowe znaczne
+F73,Upośledzenie umysłowe głębokie
+F80.0,Specyficzne zaburzenie artykulacji
+F80.1,Zaburzenie ekspresji mowy
+F81.0,Specyficzne zaburzenie czytania
+F81.1,Specyficzne zaburzenie opanowania poprawnej pisowni
+F84.0,Autyzm dziecięcy
+F84.5,Zespół Aspergera
+F90.0,Zaburzenia aktywności i uwagi (ADHD)
+F90.1,Hiperkinetyczne zaburzenia zachowania
+F91.0,Zaburzenia zachowania ograniczone do środowiska rodzinnego
+F91.1,Zaburzenia zachowania z nieprawidłowym procesem socjalizacji
+F92.0,Depresyjne zaburzenia zachowania
+F93.0,Zaburzenia lękowe w postaci lęku przed separacją w dzieciństwie
+F95.0,Przemijające tiki
+F95.2,Zespół tików głosowych i ruchowych (zespół Tourette'a)
+F98.0,Moczenie nieorganiczne
+F98.5,Jąkanie
+F99,Zaburzenie psychiczne bliżej nieokreślone
+G40.0,Padaczka i zespoły padaczkowe zlokalizowane samoistne
+G40.3,Uogólniona padaczka samoistna i zespoły padaczkowe
+G47.0,Zaburzenia zasypiania i podtrzymywania snu
+G47.2,Zaburzenia rytmu snu i czuwania
+G47.3,Bezdech senny
+Z00.4,Ogólne badanie psychiatryczne
+Z03.2,Obserwacja w kierunku podejrzewanego zaburzenia psychicznego
+Z63.0,Problemy w relacjach ze współmałżonkiem lub partnerem
+Z63.4,Zniknięcie lub śmierć członka rodziny
+Z73.0,Zespół wypalenia

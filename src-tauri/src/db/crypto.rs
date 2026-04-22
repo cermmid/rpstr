@@ -131,6 +131,46 @@ mod tests {
     }
 
     #[test]
+    fn icd10_seed_loads_and_fts_works() {
+        let tmp = temp_db();
+        let dir = tmp.path().parent().unwrap().to_path_buf();
+        std::env::set_var("RPSTR_DATA_DIR", &dir);
+        let db = tmp.path();
+
+        let _ = std::fs::remove_file(db);
+        let conn = open_at(db, "test-pass", false).unwrap();
+
+        // Seed wczytany
+        let count: i64 = conn
+            .query_row("SELECT count(*) FROM icd10_codes", [], |r| r.get(0))
+            .unwrap();
+        assert!(count > 100, "expected >100 ICD-10 codes, got {count}");
+
+        // FTS znajduje "depresja" → kody z grupy F32/F33
+        let mut stmt = conn
+            .prepare("SELECT code FROM icd10_fts WHERE icd10_fts MATCH 'depresj*' ORDER BY bm25(icd10_fts)")
+            .unwrap();
+        let codes: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert!(codes.iter().any(|c| c.starts_with("F32") || c.starts_with("F33")));
+
+        // Prefix na kodzie
+        let label: String = conn
+            .query_row(
+                "SELECT label_pl FROM icd10_codes WHERE code = ?",
+                ["F41.1"],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(label.to_lowercase().contains("uogólnione") || label.to_lowercase().contains("lekowe"));
+
+        let _ = std::fs::remove_file(db);
+    }
+
+    #[test]
     fn reopen_with_wrong_password_fails() {
         let tmp = temp_db();
         let dir = tmp.path().parent().unwrap().to_path_buf();

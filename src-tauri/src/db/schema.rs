@@ -1,7 +1,10 @@
-//! Migracje SQLCipher.
+//! Migracje SQLCipher + seed bazy ICD-10.
 
 use crate::error::Result;
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
+
+/// Bundlowana baza ICD-10 (podzbiór polskiej MKCh-10, psychiatria).
+const ICD10_CSV: &str = include_str!("../../resources/icd10.csv");
 
 const SCHEMA_V1: &str = r#"
 BEGIN;
@@ -73,10 +76,59 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS icd10_codes (
+    code TEXT PRIMARY KEY,
+    label_pl TEXT NOT NULL
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS icd10_fts USING fts5(
+    code,
+    label_pl,
+    tokenize = 'unicode61 remove_diacritics 2'
+);
+
 COMMIT;
 "#;
 
 pub fn migrate(conn: &Connection) -> Result<()> {
     conn.execute_batch(SCHEMA_V1)?;
+    seed_icd10_if_empty(conn)?;
+    Ok(())
+}
+
+fn seed_icd10_if_empty(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT count(*) FROM icd10_codes", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    let mut lines = ICD10_CSV.lines();
+    let _header = lines.next(); // pomijamy "code,label_pl"
+
+    // Rusqlite wymaga `&mut Connection` do transakcji, ale tu mamy `&` —
+    // używamy manualnego BEGIN/COMMIT, co w tym kontekście daje ten sam
+    // efekt (atomic load ~130 wierszy).
+    conn.execute_batch("BEGIN")?;
+    for line in lines {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let Some((code, label)) = line.split_once(',') else {
+            continue;
+        };
+        let code = code.trim();
+        let label = label.trim();
+        if code.is_empty() || label.is_empty() {
+            continue;
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO icd10_codes (code, label_pl) VALUES (?, ?)",
+            params![code, label],
+        )?;
+        conn.execute(
+            "INSERT INTO icd10_fts (code, label_pl) VALUES (?, ?)",
+            params![code, label],
+        )?;
+    }
+    conn.execute_batch("COMMIT")?;
     Ok(())
 }
