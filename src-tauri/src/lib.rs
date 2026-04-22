@@ -1,8 +1,6 @@
-// Stuby na etapie MVP D1-2 zawierają kod, który zostanie podłączony w kolejnych
-// dniach harmonogramu (D3-10). Warningi „never used" są oczekiwane, tłumimy je
-// globalnie do czasu pełnego wdrożenia.
 #![allow(dead_code)]
 
+mod audio;
 mod commands;
 mod db;
 mod error;

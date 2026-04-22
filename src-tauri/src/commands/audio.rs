@@ -1,25 +1,29 @@
-//! Nagrywanie audio przez `cpal`. Bufor w RAM, NIGDY na dysku.
-//! Plan (D3-4): cpal::Host → default_input_device → stream 16 kHz mono f32 →
-//! VecDeque<f32> wewnątrz `AppState::recorder_buffer`.
-
-use crate::error::Result;
+use crate::error::{AppError, Result};
+use crate::state::AppState;
 use serde::Serialize;
+use tauri::State;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordingResult {
     pub duration_ms: u64,
+    pub sample_rate: u32,
+    pub num_samples: usize,
 }
 
 #[tauri::command]
-pub async fn start_recording() -> Result<()> {
-    // TODO(D3): cpal input stream.
-    eprintln!("[rpstr] start_recording (stub)");
-    Ok(())
+pub async fn start_recording(state: State<'_, AppState>) -> Result<()> {
+    state.audio.start().map_err(AppError::Other)
 }
 
 #[tauri::command]
-pub async fn stop_recording() -> Result<RecordingResult> {
-    // TODO(D3): flush buffer, zwróć czas trwania.
-    Ok(RecordingResult { duration_ms: 0 })
+pub async fn stop_recording(state: State<'_, AppState>) -> Result<RecordingResult> {
+    let pcm = state.audio.stop().map_err(AppError::Other)?;
+    let result = RecordingResult {
+        duration_ms: pcm.duration_ms,
+        sample_rate: pcm.sample_rate,
+        num_samples: pcm.samples.len(),
+    };
+    *state.last_pcm.lock() = Some(pcm);
+    Ok(result)
 }

@@ -9,6 +9,6 @@ pub async fn unlock_vault(password: String, state: State<'_, AppState>) -> Resul
     if password.trim().is_empty() {
         return Ok(false);
     }
-    *state.unlocked.lock().unwrap() = true;
+    *state.unlocked.lock() = true;
     Ok(true)
 }

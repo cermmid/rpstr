@@ -29,9 +29,22 @@ keyring = "3"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 sha2 = "0.10"
 hex = "0.4"
-# STT/LLM lokalnie — do dopięcia w D3-5:
-# whisper-rs = "0.13"
+parking_lot = "0.12"
+
+# D3: nagrywanie audio (cpal) — opcjonalne, włączane flagą.
+# Na Linux wymaga libasound2-dev, na Windows/Mac bez dodatkowych deps.
+cpal = { version = "0.15", optional = true }
+
+# D4: transkrypcja (whisper-rs) — opcjonalne, wymaga clang + cmake do zbudowania
+# whisper.cpp. Na Windowsie zalecana wersja z `cuda` albo `metal` feature dla GPU.
+whisper-rs = { version = "0.13", optional = true }
 
 [features]
 default = []
 custom-protocol = ["tauri/custom-protocol"]
+# Włącz nagrywanie przez cpal. Bez tego start/stop_recording zwracają stuby.
+audio-live = ["dep:cpal"]
+# Włącz lokalną transkrypcję whisper-rs. Bez tego transcribe zwraca placeholder.
+stt-whisper = ["dep:whisper-rs"]
+# Full stack dla developera (Windows/Mac): `cargo tauri dev --features full`.
+full = ["audio-live", "stt-whisper"]
