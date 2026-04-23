@@ -39,9 +39,5 @@
     "shortDescription": "Asystent psychiatry — lokalne podsumowania wizyt",
     "longDescription": "Narzędzie dla lekarzy psychiatrów: nagrywa rozmowę, lokalnie transkrybuje i generuje szkic dokumentacji (SOAP + sugerowane kody ICD-10). Dane pacjentów nie opuszczają laptopa (chyba że lekarz świadomie włączy tryb BYOK Claude)."
   },
-  "plugins": {
-    "updater": {
-      "active": false
-    }
-  }
+  "plugins": {}
 }
