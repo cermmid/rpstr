@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 import type { AppSettings } from "@/lib/types";
 import { CostDashboard } from "./CostDashboard";
 
@@ -8,7 +9,7 @@ export function SettingsView() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getSettings().then(setSettings).catch((e) => setErr(String(e)));
+    api.getSettings().then(setSettings).catch((e) => setErr(errMsg(e)));
   }, []);
 
   async function update(patch: Partial<AppSettings>) {
@@ -16,7 +17,7 @@ export function SettingsView() {
       const next = await api.updateSettings(patch);
       setSettings(next);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(errMsg(e));
     }
   }
 

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 
 export function UnlockView() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export function UnlockView() {
       }
       navigate("/app/visits", { replace: true });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się odblokować bazy.");
+      setErr(errMsg(e, "Nie udało się odblokować bazy."));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 
 interface Stats {
   visits: number;
@@ -18,7 +19,7 @@ export function CostDashboard() {
     api
       .getCostStats(month)
       .then((s) => alive && setStats(s))
-      .catch((e) => alive && setErr(e instanceof Error ? e.message : String(e)));
+      .catch((e) => alive && setErr(errMsg(e)));
     return () => {
       alive = false;
     };

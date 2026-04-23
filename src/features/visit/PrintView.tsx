@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 import type { Visit } from "@/lib/types";
 
 /// Widok do drukowania/eksportu PDF.  Lekarz klika „Eksport PDF", otwiera
@@ -18,7 +19,7 @@ export function PrintView() {
     api
       .getVisit(id)
       .then(setVisit)
-      .catch((e) => setErr(e instanceof Error ? e.message : String(e)));
+      .catch((e) => setErr(errMsg(e)));
   }, [id]);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 import type { Icd10Code, VisitSummary } from "@/lib/types";
 import { Icd10Picker } from "@/features/icd10/Icd10Picker";
 
@@ -33,7 +34,7 @@ export function VisitRecorder() {
       setVisitId(v.id);
       setPhase("idle");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Nie udało się utworzyć wizyty.");
+      setErr(errMsg(e, "Nie udało się utworzyć wizyty."));
     }
   }
 
@@ -43,7 +44,7 @@ export function VisitRecorder() {
       await api.startRecording();
       setPhase("recording");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd mikrofonu.");
+      setErr(errMsg(e, "Błąd mikrofonu."));
     }
   }
 
@@ -56,7 +57,7 @@ export function VisitRecorder() {
       setTranscript(t);
       setPhase("transcript");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd transkrypcji.");
+      setErr(errMsg(e, "Błąd transkrypcji."));
       setPhase("idle");
     }
   }
@@ -70,7 +71,7 @@ export function VisitRecorder() {
       setAcceptedCodes(s.suggestedCodes);
       setPhase("review");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd podsumowania.");
+      setErr(errMsg(e, "Błąd podsumowania."));
       setPhase("transcript");
     }
   }
@@ -85,7 +86,7 @@ export function VisitRecorder() {
       });
       navigate("/app/visits");
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd zapisu.");
+      setErr(errMsg(e, "Błąd zapisu."));
     }
   }
 

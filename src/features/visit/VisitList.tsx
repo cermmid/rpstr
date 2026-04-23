@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 import type { Visit } from "@/lib/types";
 
 export function VisitList() {
@@ -15,7 +16,7 @@ export function VisitList() {
         const list = await api.listVisits();
         if (alive) setVisits(list);
       } catch (e) {
-        if (alive) setErr(e instanceof Error ? e.message : "Błąd wczytywania.");
+        if (alive) setErr(errMsg(e, "Błąd wczytywania."));
       } finally {
         if (alive) setLoading(false);
       }

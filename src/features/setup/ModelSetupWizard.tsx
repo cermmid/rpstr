@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { errMsg } from "@/lib/err";
 import type { ModelProfile, SystemProbe } from "@/lib/types";
 
 const PROFILES: Array<{
@@ -24,7 +25,7 @@ export function ModelSetupWizard() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api.probeSystem().then(setProbe).catch((e) => setErr(String(e)));
+    api.probeSystem().then(setProbe).catch((e) => setErr(errMsg(e)));
   }, []);
 
   const recommended: ModelProfile = !probe
@@ -45,7 +46,7 @@ export function ModelSetupWizard() {
       await api.downloadProfile(chosen, modelsDir);
       navigate("/app/visits", { replace: true });
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Błąd pobierania modeli.");
+      setErr(errMsg(e, "Błąd pobierania modeli."));
       setDownloading(false);
     }
   }
