@@ -38,9 +38,9 @@ dirs = "5"
 # Na Linux wymaga libasound2-dev, na Windows/Mac bez dodatkowych deps.
 cpal = { version = "0.15", optional = true }
 
-# D4: transkrypcja (whisper-rs) — opcjonalne, wymaga clang + cmake do zbudowania
-# whisper.cpp. Na Windowsie zalecana wersja z `cuda` albo `metal` feature dla GPU.
-whisper-rs = { version = "0.14", optional = true }
+# D4: transkrypcja — subprocess do gotowej binarki whisper.cpp (nie linkujemy
+# przez whisper-rs, bo crate jest archived i nie buduje się z nowym bindgenem).
+# Ścieżki do binarki i modelu przez env var RPSTR_WHISPER_BIN / RPSTR_WHISPER_MODEL.
 
 [dev-dependencies]
 tempfile = "3"
@@ -50,7 +50,5 @@ default = []
 custom-protocol = ["tauri/custom-protocol"]
 # Włącz nagrywanie przez cpal. Bez tego start/stop_recording zwracają stuby.
 audio-live = ["dep:cpal"]
-# Włącz lokalną transkrypcję whisper-rs. Bez tego transcribe zwraca placeholder.
-stt-whisper = ["dep:whisper-rs"]
-# Full stack dla developera (Windows/Mac): `cargo tauri dev --features full`.
-full = ["audio-live", "stt-whisper"]
+# Full stack dla developera: `cargo tauri dev --features full`.
+full = ["audio-live"]

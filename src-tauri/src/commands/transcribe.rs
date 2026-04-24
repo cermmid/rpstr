@@ -1,19 +1,30 @@
-//! Transkrypcja PCM → tekst polski przez whisper.cpp.
+//! Transkrypcja PCM → tekst polski przez binarkę whisper.cpp.
 //!
 //! Pipeline:
 //!   1. weź `Pcm` zapisany przez `stop_recording` w `AppState.last_pcm`
-//!   2. resample do 16 kHz (whisper wymaga właśnie tego)
-//!   3. załaduj model z `models_dir/whisper-{profile}.bin` (wybór w settings)
-//!   4. uruchom `WhisperContext::full()` z `language = Some("pl")`
-//!   5. skleć segmenty w jedno string
+//!   2. resample do 16 kHz (whisper.cpp wymaga właśnie tego)
+//!   3. zapisz jako tymczasowy WAV 16-bit mono
+//!   4. odpal `whisper-cli.exe -m <model> -f <wav> -l pl -otxt -of <stem>`
+//!   5. przeczytaj `<stem>.txt` i zwróć jako transkrypt
 //!
-//! Tryb bez feature `stt-whisper`: zwracamy placeholder, żeby UI dało się
-//! przeklikać i testować pozostałe etapy (nagrywanie, LLM, zapis).
+//! Dlaczego subprocess a nie linkowany `whisper-rs`?  Crate `whisper-rs` został
+//! zarchiwizowany w lipcu 2025 i nie buduje się z nowym LLVM/bindgenem.  Odpalanie
+//! gotowej binarki z releases whisper.cpp eliminuje cały build-chain cmake +
+//! libclang + C++ i działa identycznie na Windows/macOS/Linux.
+//!
+//! Konfiguracja (docelowo w settings, tymczasowo env var):
+//!   - `RPSTR_WHISPER_BIN`   — ścieżka do `whisper-cli.exe` (albo `main.exe`)
+//!   - `RPSTR_WHISPER_MODEL` — ścieżka do pliku `ggml-*.bin`
+//!
+//! Jeśli któraś ze zmiennych nie jest ustawiona, zwracamy placeholder — UI
+//! pokaże tekst zastępczy, lekarz może wkleić transkrypt ręcznie.
 
 use crate::audio::{resample_linear, Pcm};
 use crate::error::{AppError, Result};
 use crate::state::AppState;
 use serde::Serialize;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 const WHISPER_SAMPLE_RATE: u32 = 16_000;
@@ -39,95 +50,151 @@ pub async fn transcribe(visit_id: String, state: State<'_, AppState>) -> Result<
         pcm.duration_ms
     );
 
-    let transcript = run_whisper(pcm)?;
+    let transcript = match (whisper_bin(), whisper_model_path()) {
+        (Some(bin), Some(model)) => run_whisper_subprocess(&bin, &model, pcm)?,
+        _ => placeholder(pcm),
+    };
     Ok(TranscribeResult { transcript })
 }
 
-// ─────────────────────────────── z whisper-rs ────────────────────────────────
+// ───────────────────────────── konfiguracja ścieżek ──────────────────────────
 
-#[cfg(feature = "stt-whisper")]
-fn run_whisper(pcm: Pcm) -> Result<String> {
-    use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
-
-    let samples_16k = resample_linear(&pcm.samples, pcm.sample_rate, WHISPER_SAMPLE_RATE);
-
-    let model_path = whisper_model_path()?;
-    let ctx = WhisperContext::new_with_params(
-        &model_path.to_string_lossy(),
-        WhisperContextParameters::default(),
-    )
-    .map_err(|e| AppError::Other(format!("whisper load: {e}")))?;
-
-    let mut state = ctx
-        .create_state()
-        .map_err(|e| AppError::Other(format!("whisper state: {e}")))?;
-
-    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_language(Some("pl"));
-    params.set_translate(false);
-    params.set_print_progress(false);
-    params.set_print_realtime(false);
-    params.set_print_special(false);
-    params.set_print_timestamps(false);
-    params.set_n_threads(num_cpus_hint() as i32);
-
-    state
-        .full(params, &samples_16k)
-        .map_err(|e| AppError::Other(format!("whisper run: {e}")))?;
-
-    let num = state
-        .full_n_segments()
-        .map_err(|e| AppError::Other(format!("whisper segments count: {e}")))?;
-
-    let mut text = String::new();
-    for i in 0..num {
-        let seg = state
-            .full_get_segment_text(i)
-            .map_err(|e| AppError::Other(format!("whisper segment {i}: {e}")))?;
-        if !text.is_empty() {
-            text.push(' ');
-        }
-        text.push_str(seg.trim());
-    }
-    Ok(text)
+fn whisper_bin() -> Option<PathBuf> {
+    std::env::var_os("RPSTR_WHISPER_BIN").map(PathBuf::from)
 }
 
-#[cfg(feature = "stt-whisper")]
-fn whisper_model_path() -> Result<std::path::PathBuf> {
-    // TODO(D5): wybór konkretnego pliku na podstawie profilu z settings
-    // (whisper-small.bin / -medium.bin / -large-v3-turbo.bin).  Na razie bierzemy
-    // ścieżkę z ENV albo domyślną w %APPDATA%/rpstr/models.
-    if let Ok(p) = std::env::var("RPSTR_WHISPER_MODEL") {
-        return Ok(p.into());
-    }
-    let home = dirs_home().unwrap_or_else(|| std::path::PathBuf::from("."));
-    Ok(home.join("rpstr/models/whisper.bin"))
+fn whisper_model_path() -> Option<PathBuf> {
+    std::env::var_os("RPSTR_WHISPER_MODEL").map(PathBuf::from)
 }
 
-#[cfg(feature = "stt-whisper")]
-fn dirs_home() -> Option<std::path::PathBuf> {
-    std::env::var_os("APPDATA")
-        .or_else(|| std::env::var_os("HOME"))
-        .map(std::path::PathBuf::from)
-}
-
-#[cfg(feature = "stt-whisper")]
-fn num_cpus_hint() -> usize {
-    std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(4)
-        .min(8)
-}
-
-// ─────────────────────────────── Stub bez feature ────────────────────────────
-
-#[cfg(not(feature = "stt-whisper"))]
-fn run_whisper(pcm: Pcm) -> Result<String> {
-    let _ = resample_linear(&pcm.samples, pcm.sample_rate, WHISPER_SAMPLE_RATE);
-    Ok(format!(
-        "[transkrypt niedostępny — feature `stt-whisper` nie jest włączony; \
+fn placeholder(pcm: Pcm) -> String {
+    format!(
+        "[transkrypt niedostępny — ustaw RPSTR_WHISPER_BIN i RPSTR_WHISPER_MODEL; \
          nagranie: {} próbek @ {} Hz]",
         pcm.samples.len(),
         pcm.sample_rate,
-    ))
+    )
+}
+
+// ───────────────────────────── subprocess whisper.cpp ────────────────────────
+
+fn run_whisper_subprocess(bin: &Path, model: &Path, pcm: Pcm) -> Result<String> {
+    let samples_16k = resample_linear(&pcm.samples, pcm.sample_rate, WHISPER_SAMPLE_RATE);
+    if samples_16k.is_empty() {
+        return Err(AppError::Other("pusty bufor audio".into()));
+    }
+
+    let stem = unique_stem();
+    let tmp_dir = std::env::temp_dir();
+    let wav_path = tmp_dir.join(format!("{stem}.wav"));
+    let out_stem = tmp_dir.join(&stem);
+    let txt_path = tmp_dir.join(format!("{stem}.txt"));
+
+    write_wav_16k_mono(&wav_path, &samples_16k)
+        .map_err(|e| AppError::Other(format!("zapis WAV: {e}")))?;
+
+    let output = std::process::Command::new(bin)
+        .arg("-m")
+        .arg(model)
+        .arg("-f")
+        .arg(&wav_path)
+        .arg("-l")
+        .arg("pl")
+        .arg("-otxt")
+        .arg("-of")
+        .arg(&out_stem)
+        .arg("--no-prints")
+        .output()
+        .map_err(|e| AppError::Other(format!("spawn {}: {e}", bin.display())))?;
+
+    let _ = std::fs::remove_file(&wav_path);
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let _ = std::fs::remove_file(&txt_path);
+        return Err(AppError::Other(format!(
+            "whisper.cpp zakończył się błędem ({}): {}",
+            output.status,
+            stderr.trim()
+        )));
+    }
+
+    let transcript = std::fs::read_to_string(&txt_path)
+        .map_err(|e| AppError::Other(format!("odczyt transkryptu {}: {e}", txt_path.display())))?;
+    let _ = std::fs::remove_file(&txt_path);
+
+    Ok(transcript.trim().to_string())
+}
+
+fn unique_stem() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let pid = std::process::id();
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("rpstr_{pid}_{nanos}")
+}
+
+// ───────────────────────────── zapis WAV 16 kHz mono ─────────────────────────
+
+/// Minimalny writer WAV RIFF/PCM 16-bit mono 16 kHz — dokładnie to co łyknie
+/// whisper.cpp bez dodatkowego resampla po swojej stronie.
+fn write_wav_16k_mono(path: &Path, samples: &[f32]) -> std::io::Result<()> {
+    let mut file = std::fs::File::create(path)?;
+
+    let num_samples = samples.len() as u32;
+    let byte_size = num_samples.saturating_mul(2);
+    let chunk_size = 36u32.saturating_add(byte_size);
+
+    // RIFF
+    file.write_all(b"RIFF")?;
+    file.write_all(&chunk_size.to_le_bytes())?;
+    file.write_all(b"WAVE")?;
+
+    // fmt  — PCM, mono, 16 kHz, 16-bit
+    file.write_all(b"fmt ")?;
+    file.write_all(&16u32.to_le_bytes())?;
+    file.write_all(&1u16.to_le_bytes())?;
+    file.write_all(&1u16.to_le_bytes())?;
+    file.write_all(&WHISPER_SAMPLE_RATE.to_le_bytes())?;
+    file.write_all(&(WHISPER_SAMPLE_RATE * 2).to_le_bytes())?;
+    file.write_all(&2u16.to_le_bytes())?;
+    file.write_all(&16u16.to_le_bytes())?;
+
+    // data
+    file.write_all(b"data")?;
+    file.write_all(&byte_size.to_le_bytes())?;
+
+    let mut buf = Vec::with_capacity(samples.len() * 2);
+    for s in samples {
+        let clamped = s.clamp(-1.0, 1.0);
+        let i = (clamped * i16::MAX as f32) as i16;
+        buf.extend_from_slice(&i.to_le_bytes());
+    }
+    file.write_all(&buf)?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wav_header_has_correct_size_fields() {
+        let tmp = std::env::temp_dir().join("rpstr_test.wav");
+        let samples = vec![0.0f32; 100];
+        write_wav_16k_mono(&tmp, &samples).unwrap();
+        let bytes = std::fs::read(&tmp).unwrap();
+        let _ = std::fs::remove_file(&tmp);
+
+        assert_eq!(&bytes[0..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WAVE");
+        assert_eq!(&bytes[12..16], b"fmt ");
+        assert_eq!(&bytes[36..40], b"data");
+        // 100 samples * 2 bytes = 200 bytes data
+        let data_size = u32::from_le_bytes([bytes[40], bytes[41], bytes[42], bytes[43]]);
+        assert_eq!(data_size, 200);
+    }
 }
