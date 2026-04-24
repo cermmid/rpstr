@@ -12,14 +12,17 @@
 //! gotowej binarki z releases whisper.cpp eliminuje cały build-chain cmake +
 //! libclang + C++ i działa identycznie na Windows/macOS/Linux.
 //!
-//! Konfiguracja (docelowo w settings, tymczasowo env var):
-//!   - `RPSTR_WHISPER_BIN`   — ścieżka do `whisper-cli.exe` (albo `main.exe`)
-//!   - `RPSTR_WHISPER_MODEL` — ścieżka do pliku `ggml-*.bin`
+//! Konfiguracja ścieżek (kolejność): env var > AppSettings w SQLCipher > placeholder.
+//!   - `RPSTR_WHISPER_BIN`   — override dla developerów
+//!   - `RPSTR_WHISPER_MODEL` — override dla developerów
 //!
-//! Jeśli któraś ze zmiennych nie jest ustawiona, zwracamy placeholder — UI
-//! pokaże tekst zastępczy, lekarz może wkleić transkrypt ręcznie.
+//! Produkcyjnie ścieżki wstawia kreator z `setup.rs` do `AppSettings.whisper_bin`
+//! / `AppSettings.whisper_model` i tu je odczytujemy synchronicznie.  Jeśli obu
+//! brak, zwracamy placeholder — UI pokaże tekst zastępczy i zaprosi do
+//! konfiguracji.
 
 use crate::audio::{resample_linear, Pcm};
+use crate::commands::settings::load_settings;
 use crate::error::{AppError, Result};
 use crate::state::AppState;
 use serde::Serialize;
@@ -50,7 +53,7 @@ pub async fn transcribe(visit_id: String, state: State<'_, AppState>) -> Result<
         pcm.duration_ms
     );
 
-    let transcript = match (whisper_bin(), whisper_model_path()) {
+    let transcript = match (whisper_bin(&state), whisper_model_path(&state)) {
         (Some(bin), Some(model)) => run_whisper_subprocess(&bin, &model, pcm)?,
         _ => placeholder(pcm),
     };
@@ -59,17 +62,31 @@ pub async fn transcribe(visit_id: String, state: State<'_, AppState>) -> Result<
 
 // ───────────────────────────── konfiguracja ścieżek ──────────────────────────
 
-fn whisper_bin() -> Option<PathBuf> {
-    std::env::var_os("RPSTR_WHISPER_BIN").map(PathBuf::from)
+fn whisper_bin(state: &AppState) -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("RPSTR_WHISPER_BIN") {
+        return Some(PathBuf::from(p));
+    }
+    load_settings(state)
+        .ok()
+        .and_then(|s| s.whisper_bin)
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
 }
 
-fn whisper_model_path() -> Option<PathBuf> {
-    std::env::var_os("RPSTR_WHISPER_MODEL").map(PathBuf::from)
+fn whisper_model_path(state: &AppState) -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("RPSTR_WHISPER_MODEL") {
+        return Some(PathBuf::from(p));
+    }
+    load_settings(state)
+        .ok()
+        .and_then(|s| s.whisper_model)
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
 }
 
 fn placeholder(pcm: Pcm) -> String {
     format!(
-        "[transkrypt niedostępny — ustaw RPSTR_WHISPER_BIN i RPSTR_WHISPER_MODEL; \
+        "[transkrypt niedostępny — uruchom kreator konfiguracji (/setup); \
          nagranie: {} próbek @ {} Hz]",
         pcm.samples.len(),
         pcm.sample_rate,

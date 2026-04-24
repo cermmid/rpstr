@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { errMsg } from "@/lib/err";
-import type { AppSettings } from "@/lib/types";
+import type { AppSettings, WhisperSize } from "@/lib/types";
 import { CostDashboard } from "./CostDashboard";
 
 export function SettingsView() {
@@ -18,6 +18,20 @@ export function SettingsView() {
       setSettings(next);
     } catch (e) {
       setErr(errMsg(e));
+    }
+  }
+
+  const [whisperBusy, setWhisperBusy] = useState(false);
+  async function swapWhisper(size: WhisperSize) {
+    setWhisperBusy(true);
+    setErr(null);
+    try {
+      const { modelPath } = await api.downloadWhisperModel(size);
+      await update({ whisperModel: modelPath });
+    } catch (e) {
+      setErr(errMsg(e, "Błąd pobierania modelu Whisper."));
+    } finally {
+      setWhisperBusy(false);
     }
   }
 
@@ -101,6 +115,48 @@ export function SettingsView() {
           </label>
         </section>
       )}
+
+      <section className="card space-y-3">
+        <h2 className="font-medium">Model Whisper (transkrypcja PL)</h2>
+        <p className="text-xs text-slate-500">
+          Aktualny plik: {settings.whisperModel ?? "(nie ustawiony)"}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(["base", "small", "medium", "large-v3-turbo"] as WhisperSize[]).map((s) => (
+            <button
+              key={s}
+              className="btn-secondary"
+              disabled={whisperBusy}
+              onClick={() => swapWhisper(s)}
+            >
+              {s === "base" && "Base (~150 MB)"}
+              {s === "small" && "Small (~470 MB)"}
+              {s === "medium" && "Medium (~1.5 GB) ✓"}
+              {s === "large-v3-turbo" && "Large-v3-turbo (~1.5 GB)"}
+            </button>
+          ))}
+        </div>
+        {whisperBusy && (
+          <p className="text-xs text-slate-500">Pobieranie w toku…</p>
+        )}
+      </section>
+
+      <section className="card space-y-3">
+        <h2 className="font-medium">Model LLM (podsumowania)</h2>
+        <label className="block">
+          <span className="text-sm">Tag Ollamy</span>
+          <input
+            className="input mt-1 font-mono text-xs"
+            value={settings.ollamaModel}
+            onChange={(e) => update({ ollamaModel: e.target.value })}
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            Domyślnie Bielik 7B Q4_K_M (polski). Można wpisać np.{" "}
+            <code>qwen2.5:3b</code> albo <code>llama3.1:8b</code>. Model musi być
+            wcześniej pobrany przez <code>ollama pull &lt;tag&gt;</code>.
+          </span>
+        </label>
+      </section>
 
       <section className="card space-y-3">
         <h2 className="font-medium">Retencja danych</h2>

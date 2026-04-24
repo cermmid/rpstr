@@ -50,6 +50,20 @@ export interface SystemProbe {
   freeDiskGb: number;
   totalRamGb: number;
   gpu: "cuda" | "directml" | "metal" | "cpu-only";
+  ollamaInstalled: boolean;
+}
+
+export type WhisperSize = "base" | "small" | "medium" | "large-v3-turbo";
+
+export interface SetupProgress {
+  stage:
+    | "ollama-install"
+    | "ollama-pull"
+    | "whisper-cpp"
+    | "whisper-model"
+    | "done";
+  percent: number;
+  message: string;
 }
 
 export interface AppSettings {
@@ -60,4 +74,8 @@ export interface AppSettings {
   claudeModel?: "claude-haiku-4-5-20251001" | "claude-sonnet-4-6" | "claude-opus-4-7";
   monthlyBudgetPln?: number;
   batchModeEnabled?: boolean;
+  whisperBin?: string;
+  whisperModel?: string;
+  ollamaModel: string;
+  setupCompleted: boolean;
 }

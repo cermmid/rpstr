@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./App";
+import { SetupGate } from "./components/SetupGate";
 import { UnlockView } from "./features/auth/UnlockView";
 import { VisitList } from "./features/visit/VisitList";
 import { VisitRecorder } from "./features/visit/VisitRecorder";
@@ -13,7 +14,11 @@ export const router = createBrowserRouter([
   { path: "/setup", element: <ModelSetupWizard /> },
   {
     path: "/app",
-    element: <AppShell />,
+    element: (
+      <SetupGate>
+        <AppShell />
+      </SetupGate>
+    ),
     children: [
       { index: true, element: <Navigate to="visits" replace /> },
       { path: "visits", element: <VisitList /> },

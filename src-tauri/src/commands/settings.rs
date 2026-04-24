@@ -6,7 +6,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::State;
 
-const SETTINGS_KEY: &str = "app_settings";
+pub const SETTINGS_KEY: &str = "app_settings";
+
+/// Domyślny tag Ollamy dla Bielik 7B.  Format `hf.co/<repo>:<quant>` wymaga
+/// Ollamy 0.21+; jeśli pull się nie uda (stare Ollamy / brak internetu do HF),
+/// wizard ma fallback na `qwen2.5:3b` (zawsze dostępny w oficjalnej bibliotece).
+pub const DEFAULT_OLLAMA_MODEL: &str = "hf.co/speakleash/Bielik-7B-Instruct-v0.1-GGUF:Q4_K_M";
+pub const FALLBACK_OLLAMA_MODEL: &str = "qwen2.5:3b";
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +27,21 @@ pub struct AppSettings {
     pub monthly_budget_pln: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub batch_mode_enabled: Option<bool>,
+
+    // Iteracja 2 — ścieżki pobieranych komponentów i stan kreatora.
+    // `#[serde(default)]` żeby stara baza lekarza (bez tych pól) dalej parsowała.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whisper_bin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whisper_model: Option<String>,
+    #[serde(default = "default_ollama_model")]
+    pub ollama_model: String,
+    #[serde(default)]
+    pub setup_completed: bool,
+}
+
+fn default_ollama_model() -> String {
+    DEFAULT_OLLAMA_MODEL.into()
 }
 
 impl Default for AppSettings {
@@ -33,6 +54,10 @@ impl Default for AppSettings {
             claude_model: Some("claude-haiku-4-5-20251001".into()),
             monthly_budget_pln: Some(50.0),
             batch_mode_enabled: Some(false),
+            whisper_bin: None,
+            whisper_model: None,
+            ollama_model: DEFAULT_OLLAMA_MODEL.into(),
+            setup_completed: false,
         }
     }
 }
@@ -48,7 +73,16 @@ pub struct CostStats {
 
 #[tauri::command]
 pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings> {
-    let db = db::db(&state)?;
+    load_settings(&state)
+}
+
+/// Synchroniczny helper — używany przez `transcribe.rs`/`summarize.rs` żeby
+/// odczytać ścieżki modeli bez async-command'u.  Jeśli baza jeszcze nie jest
+/// odblokowana (brak `unlock_vault`), zwraca default, nie błąd.
+pub fn load_settings(state: &AppState) -> Result<AppSettings> {
+    let Ok(db) = db::db(state) else {
+        return Ok(AppSettings::default());
+    };
     db.with_conn(|c| {
         let raw: Option<String> = c
             .query_row(
@@ -103,6 +137,18 @@ pub async fn update_settings(
         }
         if let Some(b) = patch.get("batchModeEnabled").and_then(|v| v.as_bool()) {
             current.batch_mode_enabled = Some(b);
+        }
+        if let Some(v) = patch.get("whisperBin").and_then(|v| v.as_str()) {
+            current.whisper_bin = Some(v.into());
+        }
+        if let Some(v) = patch.get("whisperModel").and_then(|v| v.as_str()) {
+            current.whisper_model = Some(v.into());
+        }
+        if let Some(v) = patch.get("ollamaModel").and_then(|v| v.as_str()) {
+            current.ollama_model = v.into();
+        }
+        if let Some(v) = patch.get("setupCompleted").and_then(|v| v.as_bool()) {
+            current.setup_completed = v;
         }
 
         let serialized = serde_json::to_string(&current).unwrap_or_else(|_| "{}".into());

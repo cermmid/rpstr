@@ -9,8 +9,11 @@
 //! Input to transkrypt ze `transcribe.rs` (potem zastąpi go dodatkowy pass
 //! przez `preprocess.rs`).  Wynik parsujemy jako JSON pasujący do `Summary`.
 
+use crate::commands::settings::load_settings;
 use crate::error::{AppError, Result};
+use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use tauri::State;
 
 const SYSTEM_PROMPT: &str = include_str!("../../../prompts/soap_pl.txt");
 const OLLAMA_URL: &str = "http://localhost:11434/api/chat";
@@ -95,19 +98,23 @@ impl Default for Summary {
 }
 
 #[tauri::command]
-pub async fn summarize(visit_id: String, transcript: String) -> Result<Summary> {
+pub async fn summarize(
+    visit_id: String,
+    transcript: String,
+    state: State<'_, AppState>,
+) -> Result<Summary> {
     eprintln!(
         "[rpstr/summarize] visit={visit_id} transcript_len={}",
         transcript.len()
     );
 
-    // TODO(D6-7): odczyt AppSettings z SQLCipher. Póki co hardkod: local-ollama,
-    // profil "standard" → model llama3.1:8b.
-    let backend = std::env::var("RPSTR_BACKEND").unwrap_or_else(|_| "local-ollama".into());
+    // Kolejność: env var > AppSettings > default.
+    let settings = load_settings(&state).unwrap_or_default();
+    let backend = std::env::var("RPSTR_BACKEND").unwrap_or_else(|_| settings.backend.clone());
     match backend.as_str() {
         "local-ollama" => {
             let model = std::env::var("RPSTR_OLLAMA_MODEL")
-                .unwrap_or_else(|_| "llama3.1:8b".into());
+                .unwrap_or_else(|_| settings.ollama_model.clone());
             call_ollama(&model, &transcript).await
         }
         "claude-byok" => Err(AppError::NotImplemented("claude-byok w D5 — patrz commands/claude.rs")),

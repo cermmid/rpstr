@@ -35,9 +35,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "publisher": "Cermmid",
+    "copyright": "Copyright © 2026 Cermmid",
     "category": "Medical",
     "shortDescription": "Asystent psychiatry — lokalne podsumowania wizyt",
-    "longDescription": "Narzędzie dla lekarzy psychiatrów: nagrywa rozmowę, lokalnie transkrybuje i generuje szkic dokumentacji (SOAP + sugerowane kody ICD-10). Dane pacjentów nie opuszczają laptopa (chyba że lekarz świadomie włączy tryb BYOK Claude)."
+    "longDescription": "Narzędzie dla lekarzy psychiatrów: nagrywa rozmowę, lokalnie transkrybuje i generuje szkic dokumentacji (SOAP + sugerowane kody ICD-10). Dane pacjentów nie opuszczają laptopa (chyba że lekarz świadomie włączy tryb BYOK Claude).",
+    "windows": {
+      "wix": {
+        "language": ["pl-PL"]
+      }
+    }
   },
   "plugins": {}
 }
