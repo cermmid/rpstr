@@ -28,11 +28,16 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, State};
-use tokio::io::{AsyncBufReadExt, BufReader};
 
 const PROGRESS_EVENT: &str = "setup:progress";
 const WHISPER_CPP_ZIP_URL: &str =
     "https://github.com/ggerganov/whisper.cpp/releases/download/v1.7.2/whisper-bin-x64.zip";
+const OLLAMA_API: &str = "http://localhost:11434";
+
+/// Minimalna wersja Ollamy obsługująca tagi `hf.co/<org>/<repo>:<quant>` —
+/// wprowadzone w 0.21 (wrzesień 2024).  Bez tego pull Bielika 7B z HuggingFace
+/// nie zadziała, bo SpeakLeash nie ma osobnego wpisu w bibliotece Ollamy.
+const MIN_OLLAMA_VERSION_FOR_HF: (u32, u32) = (0, 21);
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -85,7 +90,7 @@ pub async fn probe_system() -> Result<SystemProbe> {
     let free_disk_gb = available_space_gb(&target);
 
     let gpu = detect_gpu();
-    let ollama_installed = which_ollama().is_some();
+    let ollama_installed = ollama_version().await.is_some();
 
     Ok(SystemProbe {
         free_disk_gb,
@@ -181,25 +186,45 @@ fn detect_gpu() -> String {
     }
 }
 
-fn which_ollama() -> Option<PathBuf> {
-    let name = if cfg!(target_os = "windows") {
-        "ollama.exe"
-    } else {
-        "ollama"
-    };
-    let path = std::env::var_os("PATH")?;
-    for dir in std::env::split_paths(&path) {
-        let candidate = dir.join(name);
-        if candidate.is_file() {
-            return Some(candidate);
-        }
-    }
-    None
-}
-
 #[tauri::command]
 pub async fn check_ollama_installed() -> Result<bool> {
-    Ok(which_ollama().is_some())
+    // Sprawdzamy HTTP endpoint zamiast PATH — usługa Ollamy startuje sama po
+    // instalacji na Windowsie, a PATH w procesie rpstr może być niezaktualizowany
+    // do następnego restartu.  Endpoint `/api/version` działa zawsze gdy serwer
+    // żyje, niezależnie od tego, jak Ollama została zainstalowana.
+    Ok(ollama_version().await.is_some())
+}
+
+async fn ollama_version() -> Option<(u32, u32)> {
+    #[derive(Deserialize)]
+    struct VersionResp {
+        version: String,
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
+        .ok()?;
+    let resp = client
+        .get(format!("{OLLAMA_API}/api/version"))
+        .send()
+        .await
+        .ok()?
+        .error_for_status()
+        .ok()?;
+    let body: VersionResp = resp.json().await.ok()?;
+    parse_version(&body.version)
+}
+
+fn parse_version(v: &str) -> Option<(u32, u32)> {
+    // "0.5.7" → (0, 5).  "0.5.7-rc1" → (0, 5).  Tylko major.minor nas obchodzi.
+    let cleaned: String = v
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    let parts: Vec<&str> = cleaned.split('.').collect();
+    let major = parts.first()?.parse().ok()?;
+    let minor = parts.get(1)?.parse().ok()?;
+    Some((major, minor))
 }
 
 // ─────────────────────────────── Ollama install ─────────────────────────────
@@ -252,10 +277,35 @@ pub async fn install_ollama(app: AppHandle) -> Result<()> {
 
 // ─────────────────────────────── Ollama pull ────────────────────────────────
 
+/// Pull modelu przez HTTP API Ollamy (`POST /api/pull`).  Używamy tego zamiast
+/// subprocess `ollama pull`, bo:
+///   1. CLI Ollamy renderuje progress bar przez `\r` (cursor returns) i nasz
+///      `BufReader::lines()` czekał w nieskończoność na `\n` — dlatego pasek
+///      stał na 0% mimo że pull rzeczywiście leciał.
+///   2. HTTP API zwraca strumień NDJSON z `{"status", "completed", "total"}` —
+///      progress dokładny do bajta i **błędy są jednoznaczne** (pole `"error"`),
+///      a nie zgubione w logu.
+///   3. Eliminujemy zależność od PATH (po instalacji Ollamy zmienna PATH w
+///      bieżącym procesie nie jest świeża).
 #[tauri::command]
 pub async fn pull_ollama_model(name: String, app: AppHandle) -> Result<()> {
-    let bin = which_ollama()
-        .ok_or_else(|| AppError::Other("ollama nie w PATH — zainstaluj najpierw".into()))?;
+    // Pre-check: czy serwer żyje + czy wersja obsługuje hf.co/ tagi.
+    let version = ollama_version().await.ok_or_else(|| {
+        AppError::Other(
+            "Ollama nie odpowiada na localhost:11434. \
+             Sprawdź że została zainstalowana i jest uruchomiona."
+                .into(),
+        )
+    })?;
+    if name.starts_with("hf.co/") && version < MIN_OLLAMA_VERSION_FOR_HF {
+        return Err(AppError::Other(format!(
+            "Ollama {}.{} jest za stara dla tagów hf.co/ (Bielika 7B z HuggingFace). \
+             Wymagana wersja {}.{} lub nowsza. \
+             Zaktualizuj Ollamę: https://ollama.com/download",
+            version.0, version.1, MIN_OLLAMA_VERSION_FOR_HF.0, MIN_OLLAMA_VERSION_FOR_HF.1
+        )));
+    }
+
     emit(
         &app,
         "ollama-pull",
@@ -263,53 +313,89 @@ pub async fn pull_ollama_model(name: String, app: AppHandle) -> Result<()> {
         format!("Pobieranie modelu {name}…"),
     );
 
-    let mut child = tokio::process::Command::new(&bin)
-        .args(["pull", &name])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| AppError::Other(format!("spawn ollama: {e}")))?;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60 * 60))
+        .build()?;
 
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| AppError::Other("brak stdout ollama".into()))?;
-    let mut lines = BufReader::new(stdout).lines();
+    let resp = client
+        .post(format!("{OLLAMA_API}/api/pull"))
+        .json(&serde_json::json!({ "name": name, "stream": true }))
+        .send()
+        .await?
+        .error_for_status()
+        .map_err(|e| AppError::Other(format!("Ollama /api/pull HTTP: {e}")))?;
 
-    while let Some(line) = lines
-        .next_line()
-        .await
-        .map_err(|e| AppError::Other(format!("read ollama stdout: {e}")))?
-    {
-        if let Some(pct) = parse_ollama_percent(&line) {
-            emit(&app, "ollama-pull", pct, line.trim().to_string());
+    let mut stream = resp.bytes_stream();
+    let mut buf = Vec::<u8>::new();
+    let mut last_emit = std::time::Instant::now();
+    let mut last_progress: f32 = 0.0;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        buf.extend_from_slice(&chunk);
+
+        // NDJSON — każda linia to osobny event.  Tnijmy po `\n`.
+        while let Some(nl) = buf.iter().position(|&b| b == b'\n') {
+            let line: Vec<u8> = buf.drain(..=nl).collect();
+            let trimmed = std::str::from_utf8(&line).unwrap_or("").trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            handle_pull_event(trimmed, &app, &mut last_emit, &mut last_progress)?;
+        }
+    }
+    // Bufor reszty bez końcowego `\n` (rzadko, ale możliwe przy ostatnim eventcie).
+    if !buf.is_empty() {
+        let trimmed = std::str::from_utf8(&buf).unwrap_or("").trim();
+        if !trimmed.is_empty() {
+            handle_pull_event(trimmed, &app, &mut last_emit, &mut last_progress)?;
         }
     }
 
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| AppError::Other(format!("wait ollama: {e}")))?;
-    if !status.success() {
-        return Err(AppError::Other(format!("ollama pull zwróciło {status}")));
-    }
     emit(&app, "ollama-pull", 100.0, "Model pobrany.");
     Ok(())
 }
 
-fn parse_ollama_percent(line: &str) -> Option<f32> {
-    // typowy format: "pulling manifest 12% ▕████..." albo "pulling aabbcc... 45%"
-    let idx = line.find('%')?;
-    let head = &line[..idx];
-    let digits: String = head
-        .chars()
-        .rev()
-        .take_while(|c| c.is_ascii_digit() || *c == '.')
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect();
-    digits.parse::<f32>().ok()
+fn handle_pull_event(
+    raw: &str,
+    app: &AppHandle,
+    last_emit: &mut std::time::Instant,
+    last_progress: &mut f32,
+) -> Result<()> {
+    #[derive(Deserialize)]
+    struct PullEvent {
+        #[serde(default)]
+        status: String,
+        #[serde(default)]
+        error: Option<String>,
+        #[serde(default)]
+        completed: Option<u64>,
+        #[serde(default)]
+        total: Option<u64>,
+    }
+    let ev: PullEvent = match serde_json::from_str(raw) {
+        Ok(e) => e,
+        Err(_) => return Ok(()), // ignorujemy niezrozumiałe linie zamiast się wywalać
+    };
+    if let Some(err) = ev.error {
+        return Err(AppError::Other(format!("Ollama: {err}")));
+    }
+    let pct = match (ev.completed, ev.total) {
+        (Some(c), Some(t)) if t > 0 => (c as f32 / t as f32) * 100.0,
+        _ => *last_progress,
+    };
+    *last_progress = pct;
+
+    // Throttle do 4 emitów/s, żeby nie zalać webview eventami.
+    if last_emit.elapsed() > std::time::Duration::from_millis(250) || pct >= 100.0 {
+        let msg = match (ev.completed, ev.total) {
+            (Some(c), Some(t)) if t > 0 => format!("{} ({} / {})", ev.status, human_size(c), human_size(t)),
+            _ => ev.status.clone(),
+        };
+        emit(app, "ollama-pull", pct, msg);
+        *last_emit = std::time::Instant::now();
+    }
+    Ok(())
 }
 
 // ─────────────────────────────── whisper.cpp binarka ────────────────────────
@@ -610,14 +696,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_ollama_percent_format() {
-        assert_eq!(parse_ollama_percent("pulling aaabbb 12%"), Some(12.0));
-        assert_eq!(
-            parse_ollama_percent("pulling manifest 100% ▕████"),
-            Some(100.0)
-        );
-        assert_eq!(parse_ollama_percent("done"), None);
-        assert_eq!(parse_ollama_percent("pulling aabb 45.5%"), Some(45.5));
+    fn parses_ollama_version() {
+        assert_eq!(parse_version("0.5.7"), Some((0, 5)));
+        assert_eq!(parse_version("0.21.0"), Some((0, 21)));
+        assert_eq!(parse_version("1.0.0"), Some((1, 0)));
+        assert_eq!(parse_version("0.5.7-rc1"), Some((0, 5)));
+        assert_eq!(parse_version(""), None);
+        assert_eq!(parse_version("garbage"), None);
+    }
+
+    #[test]
+    fn version_compare_for_hf_tags() {
+        assert!((0u32, 21u32) >= MIN_OLLAMA_VERSION_FOR_HF);
+        assert!((1u32, 0u32) >= MIN_OLLAMA_VERSION_FOR_HF);
+        assert!((0u32, 20u32) < MIN_OLLAMA_VERSION_FOR_HF);
+        assert!((0u32, 5u32) < MIN_OLLAMA_VERSION_FOR_HF);
     }
 
     #[test]
