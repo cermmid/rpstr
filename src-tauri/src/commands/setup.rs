@@ -31,7 +31,7 @@ use tauri::{AppHandle, Emitter, State};
 
 const PROGRESS_EVENT: &str = "setup:progress";
 const WHISPER_CPP_ZIP_URL: &str =
-    "https://github.com/ggerganov/whisper.cpp/releases/download/v1.7.2/whisper-bin-x64.zip";
+    "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.4/whisper-bin-x64.zip";
 const OLLAMA_API: &str = "http://localhost:11434";
 
 /// Minimalna wersja Ollamy obsługująca tagi `hf.co/<org>/<repo>:<quant>` —
