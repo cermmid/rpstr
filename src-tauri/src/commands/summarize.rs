@@ -157,7 +157,56 @@ struct OllamaResponseMessage {
     content: String,
 }
 
+/// Sprawdza czy Ollama żyje; jeśli nie — odpala `ollama serve` w tle i czeka
+/// do 15 s aż wstanie.  Na Windows Ollama jest w PATH po instalacji.
+async fn ensure_ollama_running() -> Result<()> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()?;
+
+    if client
+        .get("http://localhost:11434/api/version")
+        .send()
+        .await
+        .and_then(|r| r.error_for_status())
+        .is_ok()
+    {
+        return Ok(()); // Już działa.
+    }
+
+    // Uruchom `ollama serve` w tle — nie czekamy na zakończenie.
+    eprintln!("[rpstr/summarize] Ollama nie odpowiada — próbuję uruchomić `ollama serve`");
+    let _ = std::process::Command::new("ollama")
+        .arg("serve")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn(); // Ignorujemy błąd spawna — jeśli ollama nie ma w PATH, poniżej dostaniemy jasny błąd.
+
+    // Czekamy aż wstanie, max 15 s (Ollama startuje ~2-5 s).
+    for _ in 0..15 {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        if client
+            .get("http://localhost:11434/api/version")
+            .send()
+            .await
+            .and_then(|r| r.error_for_status())
+            .is_ok()
+        {
+            return Ok(());
+        }
+    }
+
+    Err(AppError::Other(
+        "Ollama nie uruchomiła się w ciągu 15 s. \
+         Otwórz PowerShell i wpisz: ollama serve"
+            .into(),
+    ))
+}
+
 async fn call_ollama(model: &str, transcript: &str) -> Result<Summary> {
+    ensure_ollama_running().await?;
+
     let req = OllamaRequest {
         model,
         messages: vec![
