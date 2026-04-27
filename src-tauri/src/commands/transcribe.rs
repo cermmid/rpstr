@@ -63,14 +63,40 @@ pub async fn transcribe(visit_id: String, state: State<'_, AppState>) -> Result<
 // ───────────────────────────── konfiguracja ścieżek ──────────────────────────
 
 fn whisper_bin(state: &AppState) -> Option<PathBuf> {
-    if let Some(p) = std::env::var_os("RPSTR_WHISPER_BIN") {
-        return Some(PathBuf::from(p));
+    let raw = if let Some(p) = std::env::var_os("RPSTR_WHISPER_BIN") {
+        Some(PathBuf::from(p))
+    } else {
+        load_settings(state)
+            .ok()
+            .and_then(|s| s.whisper_bin)
+            .filter(|s| !s.is_empty())
+            .map(PathBuf::from)
+    };
+    raw.map(prefer_whisper_cli)
+}
+
+/// W ZIP-ach whisper.cpp v1.7+ obok `whisper-cli.exe` siedzi `main.exe` —
+/// w nowych wersjach to tylko stub wypisujący "deprecated, use whisper-cli"
+/// i kończący się kodem 1.  Jeśli kreator zapisał wskaźnik na `main(.exe)`
+/// (bug w starszych buildach naszego rpstra), automatycznie podmieniamy na
+/// `whisper-cli(.exe)` z tego samego katalogu — bez konieczności re-runu setupu.
+fn prefer_whisper_cli(p: PathBuf) -> PathBuf {
+    let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+    if stem != "main" {
+        return p;
     }
-    load_settings(state)
-        .ok()
-        .and_then(|s| s.whisper_bin)
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from)
+    let ext = p.extension().and_then(|s| s.to_str()).unwrap_or("");
+    let new_name = if ext.is_empty() {
+        "whisper-cli".to_string()
+    } else {
+        format!("whisper-cli.{ext}")
+    };
+    let candidate = p.with_file_name(new_name);
+    if candidate.exists() {
+        candidate
+    } else {
+        p
+    }
 }
 
 fn whisper_model_path(state: &AppState) -> Option<PathBuf> {

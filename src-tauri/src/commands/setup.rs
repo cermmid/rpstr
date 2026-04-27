@@ -446,23 +446,28 @@ pub async fn download_whisper_cpp(app: AppHandle) -> Result<WhisperCppResult> {
 }
 
 fn find_whisper_bin(root: &Path) -> Option<PathBuf> {
-    // whisper.cpp od v1.7 nazywa się whisper-cli.exe; starsze buildy miały main.exe.
+    // whisper.cpp od v1.7 nazywa się whisper-cli.exe; main.exe w nowych ZIP-ach
+    // to tylko stub wypisujący "deprecated" i kończący się exit code 1, więc
+    // szukamy w kolejności preferencji — pierwszy znaleziony wygrywa.
     let candidates = ["whisper-cli.exe", "whisper-cli", "main.exe", "main"];
-    walk_for(root, &candidates)
+    for name in candidates {
+        if let Some(found) = walk_for(root, name) {
+            return Some(found);
+        }
+    }
+    None
 }
 
-fn walk_for(root: &Path, names: &[&str]) -> Option<PathBuf> {
+fn walk_for(root: &Path, name: &str) -> Option<PathBuf> {
     let entries = std::fs::read_dir(root).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file() {
-            if let Some(fname) = path.file_name().and_then(|s| s.to_str()) {
-                if names.contains(&fname) {
-                    return Some(path);
-                }
+            if path.file_name().and_then(|s| s.to_str()) == Some(name) {
+                return Some(path);
             }
         } else if path.is_dir() {
-            if let Some(found) = walk_for(&path, names) {
+            if let Some(found) = walk_for(&path, name) {
                 return Some(found);
             }
         }
