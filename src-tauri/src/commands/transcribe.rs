@@ -96,6 +96,25 @@ fn placeholder(pcm: Pcm) -> String {
 // ───────────────────────────── subprocess whisper.cpp ────────────────────────
 
 fn run_whisper_subprocess(bin: &Path, model: &Path, pcm: Pcm) -> Result<String> {
+    // Pre-flight checks before spawning the subprocess.
+    if !bin.exists() {
+        return Err(AppError::Other(format!(
+            "whisper-cli nie znaleziony: {}. Uruchom kreator konfiguracji.",
+            bin.display()
+        )));
+    }
+    let model_size = std::fs::metadata(model)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    if model_size < 1_000_000 {
+        return Err(AppError::Other(format!(
+            "Model Whisper niekompletny lub brakujący ({} bajtów): {}. \
+             Wejdź w Ustawienia → Model Whisper i pobierz ponownie.",
+            model_size,
+            model.display()
+        )));
+    }
+
     let samples_16k = resample_linear(&pcm.samples, pcm.sample_rate, WHISPER_SAMPLE_RATE);
     if samples_16k.is_empty() {
         return Err(AppError::Other("pusty bufor audio".into()));
@@ -110,6 +129,11 @@ fn run_whisper_subprocess(bin: &Path, model: &Path, pcm: Pcm) -> Result<String> 
     write_wav_16k_mono(&wav_path, &samples_16k)
         .map_err(|e| AppError::Other(format!("zapis WAV: {e}")))?;
 
+    eprintln!(
+        "[rpstr/transcribe] bin={:?} model={:?} ({} MB) wav={:?} samples={}",
+        bin, model, model_size / 1_000_000, wav_path, samples_16k.len()
+    );
+
     let output = std::process::Command::new(bin)
         .arg("-m")
         .arg(model)
@@ -120,7 +144,6 @@ fn run_whisper_subprocess(bin: &Path, model: &Path, pcm: Pcm) -> Result<String> 
         .arg("-otxt")
         .arg("-of")
         .arg(&out_stem)
-        .arg("--no-prints")
         .output()
         .map_err(|e| AppError::Other(format!("spawn {}: {e}", bin.display())))?;
 
@@ -128,11 +151,19 @@ fn run_whisper_subprocess(bin: &Path, model: &Path, pcm: Pcm) -> Result<String> 
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let _ = std::fs::remove_file(&txt_path);
+        // whisper.cpp v1.8+ prints errors to stdout; include both streams.
+        let msg = [stdout.trim(), stderr.trim()]
+            .iter()
+            .filter(|s| !s.is_empty())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" | ");
         return Err(AppError::Other(format!(
             "whisper.cpp zakończył się błędem ({}): {}",
             output.status,
-            stderr.trim()
+            if msg.is_empty() { "brak komunikatu — sprawdź logi" } else { &msg }
         )));
     }
 
